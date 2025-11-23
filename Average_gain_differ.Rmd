@@ -1,0 +1,123 @@
+---
+title: "Average_gain_differ"
+output: html_document
+Author: 'Porhay Rouen'
+---
+
+# Loading package
+```{r}
+library(nycflights13)
+library(ggplot2)
+library(dplyr)
+```
+
+Introduction
+
+This project analyzes net gain per flight for United Airlines (UA). Net gain is defined as departure delay minus arrival delay, which shows how much quicker a flight arrived than planned. We will explore whether net gain differs for flights that departed late versus on time, and for flights that departed more than 30 minutes late.
+
+## check few data
+```{r}
+head(flights)
+```
+
+# Filter United Airlines flights and compute net gain
+```{r}
+
+ua_flights <- flights %>%
+filter(carrier == "UA") %>%
+mutate(
+net_gain = dep_delay - arr_delay,
+departed_late = dep_delay > 0,        # any positive delay
+departed_30plus = dep_delay > 30      # more than 30 minutes late
+) %>%
+filter(!is.na(net_gain))
+
+```
+
+#Exploratory Data Analysis (EDA)
+
+```{r}
+# Summary of net gain
+
+summary(ua_flights$net_gain)
+
+# Histogram of net gain
+
+ggplot(ua_flights, aes(net_gain)) +
+geom_histogram(bins = 40, fill = "skyblue", color = "black") +
+labs(
+title = "Distribution of Net Gain for UA Flights",
+x = "Net Gain (minutes)",
+y = "Count"
+)
+
+```
+
+# Compare Late vs Not Late
+
+```{r}
+# Compute mean net gain
+
+mean_late <- ua_flights %>%
+group_by(departed_late) %>%
+summarise(mean_gain = mean(net_gain))
+
+# Bar plot
+
+ggplot(mean_late, aes(x = departed_late, y = mean_gain, fill = departed_late)) +
+geom_col(width = 0.5) +
+geom_text(aes(label = round(mean_gain,2)), vjust = -0.5) +
+scale_fill_manual(values = c("skyblue", "orange")) +
+labs(
+title = "Average Net Gain: Late vs Not Late",
+x = "Departed Late?",
+y = "Mean Net Gain (minutes)"
+) +
+theme_minimal()
+
+
+```
+Flights that departed on time gained 9.27 minutes on average, while late flights gained 7.54 minutes. This difference is statistically significant, as confirmed by the t-test below.
+
+```{r}
+# T-test: Late vs Not Late
+
+t_test_late <- t.test(net_gain ~ departed_late, data = ua_flights)
+t_test_late
+
+```
+
+# Compare >30 Min Late vs Others
+
+```{r}
+# Compute mean net gain
+
+mean_late30 <- ua_flights %>%
+group_by(departed_30plus) %>%
+summarise(mean_gain = mean(net_gain))
+
+# Bar plot
+
+ggplot(mean_late30, aes(x = departed_30plus, y = mean_gain, fill = departed_30plus)) +
+geom_col(width = 0.5) +
+geom_text(aes(label = round(mean_gain,2)), vjust = -0.5) +
+scale_fill_manual(values = c("skyblue", "orange")) +
+labs(
+title = "Average Net Gain: >30 Min Late vs Others",
+x = "Departed >30 Min Late?",
+y = "Mean Net Gain (minutes)"
+) +
+theme_minimal()
+
+```
+
+Flights delayed over 30 minutes gained 6.86 minutes on average, while other flights gained 8.70 minutes. The difference is statistically significant according to the t-test.
+
+```{r}
+# T-test: >30 Min Late vs Others
+
+t_test_late30 <- t.test(net_gain ~ departed_30plus, data = ua_flights)
+t_test_late30
+
+```
+
