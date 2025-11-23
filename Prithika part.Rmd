@@ -1,0 +1,83 @@
+---
+title: "Prithika part"
+output: html_document
+---
+
+```{r}
+library(nycflights13)
+library(tidyverse)
+```
+
+```{r}
+# filtering only UA flights
+ua_flights <- flights %>%
+  filter(carrier == "UA") %>%
+  filter(!is.na(dep_delay),
+         !is.na(arr_delay),
+         !is.na(air_time)) %>%
+  mutate(
+    gain = dep_delay - arr_delay   # net gain
+  )
+```
+
+```{r}
+#Find 5 most common destinations for UA from NYC
+top5_dest <- ua_flights %>%
+  count(dest, sort = TRUE) %>%
+  slice_head(n = 5)
+
+top5_dest
+```
+
+```{r}
+# Filter to these destinations
+ua_top5 <- ua_flights %>%
+  filter(dest %in% top5_dest$dest)
+```
+
+Describe the Distribution (Boxplot)
+```{r}
+ggplot(ua_top5, aes(x = dest, y = gain)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(
+    title = "Distribution of Net Gain for Top 5 United Destinations",
+    x = "Destination Airport",
+    y = "Gain (minutes)"
+  )
+```
+
+Compute Mean Gain + 95% Confidence Intervals
+```{r}
+gain_top5_summary <- ua_top5 %>%
+  group_by(dest) %>%
+  summarise(
+    n = n(),
+    mean_gain = mean(gain),
+    sd_gain = sd(gain),
+    se_gain = sd_gain / sqrt(n),
+    ci_low = mean_gain + qt(0.025, df = n - 1) * se_gain,
+    ci_high = mean_gain + qt(0.975, df = n - 1) * se_gain
+  )
+
+gain_top5_summary
+```
+
+Confidence Interval Plot 
+```{r}
+ggplot(gain_top5_summary, aes(x = dest, y = mean_gain)) +
+  geom_point(size = 3, color = "blue") +
+  geom_errorbar(
+    aes(ymin = ci_low, ymax = ci_high),
+    width = 0.15,
+    color = "blue"
+  ) +
+  labs(
+    title = "Average Net Gain with 95% Confidence Intervals\nTop 5 United Destinations from NYC",
+    x = "Destination",
+    y = "Average Gain (minutes)"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+
+
